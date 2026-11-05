@@ -17,4 +17,4 @@ else
   echo "All running containers have been stopped."
 fi
 
-docker-compose up -d
+docker compose up -d
