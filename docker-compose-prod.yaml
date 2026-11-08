@@ -1,6 +1,10 @@
 services:
   mysqldb:
     image: mysql:8.0.36
+    command:
+      - --performance-schema=OFF
+      - --innodb-buffer-pool-size=64M
+      - --max-connections=50
     environment:
       - MYSQL_ROOT_PASSWORD=root
       - MYSQL_DATABASE=vollmed_api
@@ -8,18 +12,28 @@ services:
       - ./mysql-data:/var/lib/mysql
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     restart: unless-stopped
+    mem_limit: 384m
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
     networks:
       - vollmed
-  
+
   api:
     image: vollmed-api:latest
     restart: unless-stopped
+    mem_limit: 512m
     environment:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysqldb:3306/vollmed_api?createDatabaseIfNotExist=true
-    depends_on: 
-      - mysqldb
+      JAVA_TOOL_OPTIONS: -XX:MaxRAMPercentage=75 -XX:+UseSerialGC
+    depends_on:
+      mysqldb:
+        condition: service_healthy
     ports:
       - "8000:8080"
     networks:
@@ -28,6 +42,3 @@ services:
 networks:
   vollmed:
     driver: bridge
-
-volumes:
-  mysql-data:
